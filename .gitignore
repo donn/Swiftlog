@@ -1,0 +1,7 @@
+.build/
+.vscode/
+build/
+DerivedData/
+main.vpi
+main.vpp
+Package.pins
