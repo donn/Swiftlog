@@ -13,10 +13,10 @@ First, run **setup.sh**. This will copy all of Swift's shared objects to /usr/li
 
 Second, run **build.sh**. The magic will happen.
 
-Third, run **run.sh**. If all goes well, this should output.
+Third, run **run.sh**. If all goes well, you should see:
 
     Hello from Verilog!
-    ..and Hello from Swift!
+    ...and Hello from Swift!
 
 And you're ready to go! Use all the Swift files you want past this point by putting them in Swiftlog/. On startup, it calls Swiftlog.startup()- so initialize static classes there.
 

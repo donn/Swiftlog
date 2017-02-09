@@ -13,7 +13,7 @@ func startup()
       helloWorld.tfname = UnsafePointer<Int8>!(UTF8String("$hello_world"))
       helloWorld.calltf  = {
             (user_data: UnsafeMutablePointer<PLI_BYTE8>?) -> PLI_INT32 in
-            print("..and Hello from Swift!")
+            print("...and Hello from Swift!")
             return 0
       }
       helloWorld.compiletf = {
