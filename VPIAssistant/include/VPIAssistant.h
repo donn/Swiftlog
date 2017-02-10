@@ -17,6 +17,7 @@ extern "C"
     This helps conversion from a Swift string to a CString, which is a nightmare otherwise.
 */
 char* UTF8String(const char *);
+void vpi_finish();
 
 #ifdef __cplusplus
 }

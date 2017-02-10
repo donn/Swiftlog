@@ -1,1 +1,1 @@
-vvp -M. -mmain main.vvp
+vvp -MExecutables/ -mmain Executables/main.vvp

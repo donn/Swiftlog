@@ -2,6 +2,5 @@
 .vscode/
 build/
 DerivedData/
-main.vpi
-main.vpp
+Executables/
 Package.pins

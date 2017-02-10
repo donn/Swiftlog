@@ -5,5 +5,6 @@ let package = Package(
     targets: [
         Target(name: "Swiftlog", dependencies: ["VPIAssistant"]),
         Target(name: "VPIAssistant")
-    ]
+    ],
+    exclude: ["Executables", "Verilog"]
 )

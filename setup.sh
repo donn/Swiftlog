@@ -1,1 +1,0 @@
-sudo cp -r $(dirname $(dirname $(which swift)))/lib/swift/linux/* /usr/lib
