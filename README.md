@@ -33,7 +33,6 @@ You need Swift 3.1-dev installed on your device, which you can get from [Swift.o
 
 ## Ubuntu
 Other than Swift, you'll just need Clang and IcarusVerilog.
-
 ```bash
     sudo apt install clang iverilog
 ```
