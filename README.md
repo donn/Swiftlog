@@ -17,12 +17,14 @@ Before running this for the first time, you need
 This will copy everything from your current version of Swift to /usr/lib. It's not optimal, but it is the only place where IcarusVerilog looks when loading dynamic modules as far as I know.
 
 ### Running
-To build, run *build.sh*. This compiles the C, Swift and Verilog components, and generates two files: main.vpi and main.vpp. You may get a warning about Verilog being empty- ignore it. That's the Swift Package Manager.
+To build, run *build.sh*. This compiles the C, Swift and Verilog components, and generates two files: main.vpi and main.vpp.
 
 To run, run *run.sh*. If all goes well, you should see:
 
+```bash
     Hello from Verilog!
     ...and Hello from Swift!
+```
 
 And you're ready to go! Use all the Swift files you want past this point by putting them in Swiftlog/. On startup, it calls Swiftlog.startup()- so initialize static classes there.
 
@@ -33,6 +35,7 @@ You need Swift 3.1-dev installed on your device, which you can get from [Swift.o
 
 ## Ubuntu
 Other than Swift, you'll just need Clang and IcarusVerilog.
+
 ```bash
     sudo apt install clang iverilog
 ```
