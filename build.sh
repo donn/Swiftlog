@@ -10,6 +10,7 @@ if [ $unamestr = "Darwin" ]; then
     swift build -Xcc -I/usr/local/include/ -Xlinker -undefined -Xlinker dynamic_lookup
     clang -fPIC -dynamiclib -undefined dynamic_lookup -L$(dirname $(dirname $(which swift)))/lib/swift/macosx .build/debug/Swiftlog.build/Swiftlog.swift.o .build/debug/VPIAssistant.build/VPIAssistant.c.o -o Executables/main.vpi -rpath $(dirname $(dirname $(which swift)))/lib/swift/macosx
 else
-    echo "Compiling for Linux."        
-    clang -fPIC -shared .build/debug/Swiftlog.build/Swiftlog.swift.o .build/debug/VPIAssistant.build/VPIAssistant.c.o -o Executables/main.vpi -L$(dirname $(dirname $(which swift)))/lib/swift/linux -ldispatch -lFoundation -lswiftCore -lswiftGlibc -lswiftRemoteMirror -lswiftSwiftOnoneSupport
+    echo "Compiling for Linux."
+    swift build      
+    clang -fPIC -shared .build/debug/Swiftlog.build/Swiftlog.swift.o .build/debug/VPIAssistant.build/VPIAssistant.c.o -o Executables/main.vpi -L$(dirname $(dirname $(which swift)))/lib/swift/linux -ldispatch -lFoundation -lswiftCore -lswiftGlibc -lswiftRemoteMirror -lswiftSwiftOnoneSupport -rpath $(dirname $(dirname $(which swift)))/lib/swift/linux
 fi

@@ -4,19 +4,7 @@ Swiftlog is a Swift bridge for IcarusVerilog's VPI (PLI 2.0).
 The API is not "Swifty" yet, but ~all~ of your logic can be written in Swift!
 
 # Usage
-So this is slightly finicky. Just a fair warning.
-
-## First Time Setup on Ubuntu
-Before running this for the first time, you need 
-
-```bash
-    sudo cp -r $(dirname $(dirname $(which swift)))/lib/swift/linux/* /usr/lib
-```
-
-This will copy everything from your current version of Swift to /usr/lib. It's not optimal (possibly even dangerous), granted, and I'm working on a replacement.
-
-## Running
-To build, run *build.sh*. This compiles the C, Swift and Verilog components, and generates two files: main.vpi and main.vpp.
+To build, run *build.sh*. This compiles the C, Swift and Verilog components, and generates two files inside **Executables**: main.vpi and main.vpp.
 
 To run, run *run.sh*. If all goes well, you should see:
 
