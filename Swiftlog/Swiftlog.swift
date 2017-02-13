@@ -8,7 +8,7 @@ import VPIAssistant
 func startup()
 {
     //Register Function "$hello_world"
-    var helloWorld = s_vpi_systf_data();
+    var helloWorld = s_vpi_systf_data()
     helloWorld.type = vpiSysTask
     helloWorld.tfname = UnsafePointer<Int8>!(UTF8String("$hello_world"))
     helloWorld.calltf  = {
