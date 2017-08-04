@@ -5,6 +5,15 @@ import VPIAssistant
 
     Do ALL your setup here. No, really. ~All of it~. This is the equivalent of a main function.
 */
+
+class Swiftlog
+{
+    static func finish()
+    {
+        vpi_finish();
+    }
+}
+
 func startup()
 {
     //Register Function "$hello_world"
