@@ -6,20 +6,13 @@ import VPIAssistant
     Do ALL your setup here. No, really. ~All of it~. This is the equivalent of a main function.
 */
 
-class Swiftlog
-{
-    static func finish()
-    {
-        vpi_finish();
-    }
-}
-
+@_cdecl("startup")
 func startup()
 {
     //Register Function "$hello_world"
     var helloWorld = s_vpi_systf_data()
     helloWorld.type = vpiSysTask
-    helloWorld.tfname = UnsafePointer<Int8>!(UTF8String("$hello_world"))
+    helloWorld.tfname = "$hello_world".cPointer.literal
     helloWorld.calltf  = {
         (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
         print("...and Hello from Swift!")
@@ -36,7 +29,7 @@ func startup()
     //Register Function "$hello_world"
     var showResult = s_vpi_systf_data();
     showResult.type = vpiSysTask
-    showResult.tfname = UnsafePointer<Int8>!(UTF8String("$show_result"))
+    showResult.tfname = "$show_result".cPointer.literal
     showResult.compiletf =
     {
         (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
@@ -45,7 +38,7 @@ func startup()
         else
         {
             print("Fatal Error: $show_result failed to obtain handle. The simulation will abort.")
-            vpi_finish()
+            Control.finish()
             return 0
         }
         
@@ -53,7 +46,7 @@ func startup()
         else
         {
             print("$show_result requires one argument. The simulation will abort.")
-            vpi_finish()
+            Control.finish()
             return 0
         }
 
@@ -66,7 +59,7 @@ func startup()
             if type != vpiNet && type != vpiReg
             {
                 print("Invalid argument.")
-                vpi_finish()
+                Control.finish()
                 return 0
             }
         }
@@ -74,7 +67,7 @@ func startup()
         if count > 1
         {
             print("$show_result requires one argument. The simulation will abort.")
-            vpi_finish()
+            Control.finish()
         }
 
         return 0
@@ -87,7 +80,7 @@ func startup()
         else
         {
             print("Fatal Error: $show_result failed to obtain handle. The simulation will abort.")
-            vpi_finish()
+            Control.finish()
             return 0
         }
         

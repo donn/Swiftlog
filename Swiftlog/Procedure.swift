@@ -83,77 +83,93 @@ public class Procedure
     private var compiletf: (UnsafeMutablePointer<Int8>?) -> (Int32)
     private var name: String
     private var cNameSize: Int
+    private var cNamePointer: UnsafeMutablePointer<UInt8>
     private var type: ProcedureType
     private var arguments: [Object]
     private var registered: Bool
-    private var validate: ((_: [Any]) -> (Bool))?
-    private var execute: (_: [Any]) -> (Bool)
+    private var validate: ((_: inout [Any]) -> (Bool))?
+    private var execute: (_: inout [Any]) -> (Bool)
     
-    init(name: String, type: ProcedureType = .Task, arguments: [Object], validationClosure: ((_: [Any]) -> (Bool))? = nil, executionClosure: @escaping (_: [Any]) -> (Bool), register: Bool = true)
+    init(name: String, type: ProcedureType = .Task, arguments: [Object], validationClosure: ((_: inout [Any]) -> (Bool))? = nil, executionClosure: @escaping (_: inout [Any]) -> (Bool), register: Bool = true)
     {
         self.name = name
         self.type = type
         self.arguments = arguments
         self.validate = validationClosure
         self.execute = executionClosure
-
         self.store = s_vpi_systf_data()
-        var utf8Name = Array(String(self.name)!.utf8)
-        self.cNameSize = utf8Name.count
-        self.store.tfname = UnsafeMutablePointer<Int8>.allocate(self.cNameSize)
-        self.store.tfname.initializeFrom(utf8Name)
+
+        let pointers = self.name.cPointer
+        self.cNameSize = pointers.elementCount
+        self.cNamePointer = pointers.mutable
+        self.store.tfname = pointers.literal
+
         self.store.type = PLI_INT32(self.type.rawValue)
-        self.compiletf = {
+        self.store.compiletf = {
             (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
+            return 0
+        } //So it doesn't complain about not everything being initialize before self is used in a method like a goddamn baby
+        self.store.calltf = {
+            (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
+            return 0
+        } //See above
+        self.registered = true
+        // self.store.compiletf =  {
+        //     (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
+        //     return self.compile(user_data: user_data)
+        // } //Error here
+        vpi_register_systf(&self.store);
 
-            guard let handle = vpi_handle(vpiSysTfCall, nil)
-            else
-            {
-                print("Fatal Error: $\(self.name) failed to obtain handle. The simulation will abort.")
-                Swiftlog.finish()
-                return 0
-            }
+    }
 
-            if arguments.count > 1
-            {
-            
-                guard let iterator = vpi_iterate(vpiArgument, handle)
-                else
-                {
-                    print("$\(self.name) requires \(arguments.count) argument(s). The simulation will abort.")
-                    Swiftlog.finish()
-                    return 0
-                }
-
-                var count = 0
-                while let argument = vpi_scan(iterator)
-                {
-                    count += 1
-                    let type = vpi_get(vpiType, argument)
-
-                    if Int(type) != self.arguments[count].type?.rawValue
-                    {
-                        print("$\(self.name), argument \(count): Invalid argument type.")
-                        Swiftlog.finish()
-                        return 0
-                    }
-                }
-
-                if count > 1
-                {
-                    print("$\(self.name) requires \(arguments.count) argument(s). The simulation will abort.")
-                    Swiftlog.finish()
-                }
-            }
-
+    func compile(user_data: UnsafeMutablePointer<Int8>?) -> Int32
+    {
+        guard let handle = vpi_handle(vpiSysTfCall, nil)
+        else
+        {
+            print("Fatal Error: $\(self.name) failed to obtain handle. The simulation will abort.")
+            Control.finish()
             return 0
         }
 
+        if arguments.count >= 0
+        {
+        
+            guard let iterator = vpi_iterate(vpiArgument, handle)
+            else
+            {
+                print("$\(self.name) requires \(arguments.count) argument(s). The simulation will abort.")
+                Control.finish()
+                return 0
+            }
+
+            var count = 0
+            while let argument = vpi_scan(iterator)
+            {
+                count += 1
+                let type = vpi_get(vpiType, argument)
+
+                if Int(type) != self.arguments[count].type?.rawValue
+                {
+                    print("$\(self.name), argument \(count): Invalid argument type.")
+                    Control.finish()
+                    return 0
+                }
+            }
+
+            if count != arguments.count
+            {
+                print("$\(self.name) requires \(arguments.count) argument(s) (\(count) provided). The simulation will abort.")
+                Control.finish()
+            }
+        }
+
+        return 0
     }
 
     deinit
     {
-        self.store.tfname.dealloc(self.cNameSize)
+        self.cNamePointer.deallocate(capacity: self.cNameSize)
     }
 
 }
