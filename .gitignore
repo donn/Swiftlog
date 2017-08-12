@@ -4,3 +4,4 @@ build/
 DerivedData/
 Executables/
 Package.pins
+Package.swift

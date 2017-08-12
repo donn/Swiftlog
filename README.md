@@ -4,9 +4,25 @@ Swiftlog is a Swift bridge for IcarusVerilog's VPI (PLI 2.0).
 A Swiftier API is in the works, but ~all~ of your logic can be written in Swift!
 
 # Usage
-To build, run *build.sh*. This compiles the C, Swift and Verilog components, and generates two files inside **Executables**: main.vpi and main.vpp.
+Make a folder with your VPI module's name. Copy all verilog modules inside, and make sure all includes use that folder as root (i.e. \`include "Mux.v", not \`include "SwiftlogExample/Mux.v").
 
-To run, run *run.sh*. If all goes well, you should see:
+Create a file called Startup.swift, and use this template:
+
+```swift
+//SWIFTLOG: <Verilog File To Simulate Here>
+import Swiftlog
+import VPIAssistant
+
+@_cdecl("swiftlog_startup")
+func startup()
+{
+    //Initialize here...
+}
+```
+
+Then set up your procedures where it says initialize here.
+
+An example has been provided, to run it, just write `./simulate SwiftlogExample`. If all goes well, you should see.
 
 ```bash
     Hello from Verilog!
@@ -14,13 +30,11 @@ To run, run *run.sh*. If all goes well, you should see:
     Result: 999
 ```
 
-And you're ready to go! Use all the Swift files you want past this point by putting them in Swiftlog/. On startup, it calls Swiftlog.startup()- so initialize static classes there.
-
 Your clock should be coming from Verilog, and you should provide update functions as such.
 
 
 # Requirements
-You need Swift 3.1-dev installed on your device, which you can get from [Swift.org](https://swift.org/download/#swift-31-development), and set it to work with bash. Swift 3.0 might also work, but just hasn't been been tested yet.
+You need Swift 3.1, which you can get from [Swift.org](https://swift.org/download), and add it to the PATH. On macOS, that means Xcode and the Xcode commandline tools must be active.
 
 ## Ubuntu
 Other than Swift, you'll just need Clang and IcarusVerilog.
@@ -37,8 +51,7 @@ You need the latest version of Xcode and IcarusVerilog headers installed to /usr
 ```
 
 # To-do
-* Swiftier syntax. This is no more than an API import with the necessary modifications to make it link against iverilog at the moment.
-* Makefile?
+* Expose arguments in a Swiftier, friendlier way: currently you still have to use the C iterators and such to get your arguments.
 
 # License
 GNU General Public License v2 or (at your option), any later version. Check 'LICENSE'.

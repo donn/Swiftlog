@@ -1,7 +1,7 @@
 //main Verilog Module
 `timescale 1ns/1ns
 
-`include "Verilog/mux.v"
+`include "mux.v"
 
 module main;
 

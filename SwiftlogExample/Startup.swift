@@ -1,33 +1,19 @@
+//SWIFTLOG: main.v
+import Swiftlog
 import VPIAssistant
 
-/*
-    startup
-
-    Do ALL your setup here. No, really. ~All of it~. This is the equivalent of a main function.
-*/
-
-@_cdecl("startup")
+@_cdecl("swiftlog_startup")
 func startup()
 {
-    //Register Function "$hello_world"
-    var helloWorld = s_vpi_systf_data()
-    helloWorld.type = vpiSysTask
-    helloWorld.tfname = "$hello_world".cPointer.cLiteral
-    helloWorld.calltf  = {
-        (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
-        print(user_data?.pointee)
+     //Swiftlog Style
+    let helloWorld = Procedure(name: "$hello_world", executionClosure: {
+        _ in
         print("...and Hello from Swift!")
-        return 0
-    }
-    helloWorld.compiletf = {
-        (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
-        return 0
-    }
-    helloWorld.sizetf = nil
-    helloWorld.user_data = "scrambld, egge".cPointer.cMutable
-    vpi_register_systf(&helloWorld);
+        return true
+    })
+    helloWorld.register()
 
-    //Register Function "$hello_world"
+    //C Style
     var showResult = s_vpi_systf_data();
     showResult.type = vpiSysTask
     showResult.tfname = "$show_result".cPointer.cLiteral

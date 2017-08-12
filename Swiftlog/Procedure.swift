@@ -1,5 +1,7 @@
 import VPIAssistant
 
+typealias PLIInt32 = PLI_INT32
+
 public enum Value: Int
 {
     case BinaryString = 1
@@ -77,8 +79,34 @@ public enum ProcedureType: Int
     case Func = 2
 }
 
+
+
+func compiletf(user_data: UnsafeMutablePointer<Int8>?) -> PLIInt32
+{
+    if let data = user_data, let procedure = Procedure.dictionary[String(cString: data)]
+    {
+        return procedure.compile()
+    }
+    print("Fatal Error: Failed to get name of last function called.")
+    Control.finish()
+    return 0
+}
+
+func calltf(user_data: UnsafeMutablePointer<Int8>?) -> PLIInt32
+{
+    if let data = user_data, let procedure = Procedure.dictionary[String(cString: data)]
+    {
+        return procedure.call()
+    }
+    print("Fatal Error: Failed to get name of last function called.")
+    Control.finish()
+    return 0
+}
+
+
 public class Procedure
 {
+    public static var dictionary: [String: Procedure] = [:]
     private var store: s_vpi_systf_data
     private var name: String
     private var cNameSize: Int
@@ -89,7 +117,7 @@ public class Procedure
     private var validate: ((_: inout [Any]) -> (Bool))?
     private var execute: (_: inout [Any]) -> (Bool)
     
-    init(name: String, type: ProcedureType = .Task, arguments: [Object], validationClosure: ((_: inout [Any]) -> (Bool))? = nil, executionClosure: @escaping (_: inout [Any]) -> (Bool), register: Bool = true)
+    public init(name: String, type: ProcedureType = .Task, arguments: [Object] = [], validationClosure: ((_: inout [Any]) -> (Bool))? = nil, executionClosure: @escaping (_: inout [Any]) -> (Bool), register: Bool = false)
     {
         self.name = name
         self.type = type
@@ -102,26 +130,35 @@ public class Procedure
         self.cNameSize = pointers.elementCount
         self.cNamePointer = pointers.mutable
         self.store.tfname = pointers.cLiteral
+        self.store.user_data = pointers.cMutable
 
-        self.store.type = PLI_INT32(self.type.rawValue)
-        self.store.compiletf = {
-            (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
-            return 0
-        } //So it doesn't complain about not everything being initialized before self is used in a method like a goddamn baby
-        self.store.calltf = {
-            (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
-            return 0
-        } //See above
-        self.registered = true
-        // self.store.compiletf =  {
-        //     (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
-        //     return self.compile(user_data: user_data)
-        // } //This is where I hit a brick wall, I need to capture context for this C function, which Swift won't allow me to. Perhaps I'll need to rethink all of this...
-        vpi_register_systf(&self.store);
+        self.store.type = PLIInt32(self.type.rawValue)
+        self.store.compiletf = compiletf
+        self.store.calltf = calltf
 
+        if (register)
+        {            
+            vpi_register_systf(&self.store)
+            self.registered = true
+            Procedure.dictionary[name] = self
+        }
+        else
+        {
+            self.registered = false
+        }
     }
 
-    func compile(user_data: UnsafeMutablePointer<Int8>?) -> Int32
+    public func register()
+    {
+        if (!registered)
+        {            
+            vpi_register_systf(&self.store)
+            self.registered = true
+            Procedure.dictionary[name] = self
+        }
+    }
+
+    func compile() -> PLIInt32
     {
         guard let handle = vpi_handle(vpiSysTfCall, nil)
         else
@@ -131,13 +168,12 @@ public class Procedure
             return 0
         }
 
-        if arguments.count >= 0
-        {
-        
+        if arguments.count > 0
+        {        
             guard let iterator = vpi_iterate(vpiArgument, handle)
             else
             {
-                print("$\(self.name) requires \(arguments.count) argument(s). The simulation will abort.")
+                print("\(self.name) requires \(arguments.count) argument(s). The simulation will abort.")
                 Control.finish()
                 return 0
             }
@@ -150,7 +186,7 @@ public class Procedure
 
                 if Int(type) != self.arguments[count].type?.rawValue
                 {
-                    print("$\(self.name), argument \(count): Invalid argument type.")
+                    print("\(self.name), argument \(count): Invalid argument type.")
                     Control.finish()
                     return 0
                 }
@@ -158,12 +194,22 @@ public class Procedure
 
             if count != arguments.count
             {
-                print("$\(self.name) requires \(arguments.count) argument(s) (\(count) provided). The simulation will abort.")
+                print("\(self.name) requires \(arguments.count) argument(s) (\(count) provided). The simulation will abort.")
                 Control.finish()
             }
+
+            //TODO: Also make user-validation available
+
         }
 
         return 0
+    }
+
+    func call() -> PLIInt32
+    {        
+        //TODO: make arguments more easily accessible
+        var emptyArray: [Any] = []
+        return execute(&emptyArray) ? 0 : -1
     }
 
     deinit

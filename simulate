@@ -1,0 +1,61 @@
+#!/bin/sh
+error=0
+
+unamestr=`uname`
+
+mkdir -p Executables/
+
+header=`head -n 1 $1/Startup.swift`
+
+components=()
+
+#Portable splitting by: https://stackoverflow.com/a/15988793
+while [ "$header" ] ;do
+    iterator=${header%%\ *}
+    components+=("$iterator")
+    [ "$header" = "$iterator" ] && \
+        header='' || \
+        header="${header#*\ }"
+done
+
+swiftlogHeader="//SWIFTLOG:"
+actualHeader="${components[0]}"
+
+if [ "$actualHeader" != "$swiftlogHeader" ]; then
+    echo "Swiftlog verilog header not found in Startup.swift."
+    exit
+fi
+
+cd $1
+iverilog -o ../Executables/main.vvp "${components[1]}"
+cd ..
+
+error=$((error + $?))
+
+# macOS using Mach-style binaries means leaving some symbols hanging like that isn't viable without a special option.
+if [ $unamestr = "Darwin" ]; then
+    echo "Compiling for macOS."
+    swiftFlags="-Xcc -I/usr/local/include/ -Xlinker -undefined -Xlinker dynamic_lookup"
+    clangFlags="-dynamiclib -undefined dynamic_lookup"
+    linkerFlags="-L$(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -rpath $(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx"
+else
+    if [ $unamestr = "Darwin" ]; then
+        echo "Compiling for Linux."
+        swiftFlags=""
+        clangFlags="-shared"
+        linkerFlags="-L$(dirname $(dirname $(which swift)))/lib/swift/linux -ldispatch -lFoundation -lswiftCore -lswiftGlibc -lswiftRemoteMirror -lswiftSwiftOnoneSupport -rpath $(dirname $(dirname $(which swift)))/lib/swift/linux -fuse-ld=gold"
+    else
+        echo "Unsupported OS."
+        exit 0
+    fi
+fi
+
+echo "//Swiftlog Generated File: Do Not Modify\nlet packageName = \"$1\"\n$(cat Package.swiftlog)" > Package.swift 
+
+sh -c "swift build $swiftFlags && clang -fPIC $clangFlags .build/debug/Swiftlog.build/*.swift.o .build/debug/$1.build/*.swift.o .build/debug/VPIAssistant.build/VPIAssistant.c.o -o Executables/main.vpi $linkerFlags"
+
+error=$((error + $?))
+
+if [ "$error" == "0" ]; then
+    vvp -MExecutables/ -mmain Executables/main.vvp
+fi

@@ -5,11 +5,11 @@
 /*
     This is the part of the code that is not exactly preferable, but there isn't really a better way, it's impossible to set vlog_startup_routines anywhere in Swift.
 */
-extern void startup(void);
+extern void swiftlog_startup(void);
 
 void (*vlog_startup_routines[])() =
 {
-    startup,
+    swiftlog_startup,
     0
 };
 
