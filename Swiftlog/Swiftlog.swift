@@ -12,9 +12,10 @@ func startup()
     //Register Function "$hello_world"
     var helloWorld = s_vpi_systf_data()
     helloWorld.type = vpiSysTask
-    helloWorld.tfname = "$hello_world".cPointer.literal
+    helloWorld.tfname = "$hello_world".cPointer.cLiteral
     helloWorld.calltf  = {
         (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
+        print(user_data?.pointee)
         print("...and Hello from Swift!")
         return 0
     }
@@ -23,13 +24,13 @@ func startup()
         return 0
     }
     helloWorld.sizetf = nil
-    helloWorld.user_data = nil
+    helloWorld.user_data = "scrambld, egge".cPointer.cMutable
     vpi_register_systf(&helloWorld);
 
     //Register Function "$hello_world"
     var showResult = s_vpi_systf_data();
     showResult.type = vpiSysTask
-    showResult.tfname = "$show_result".cPointer.literal
+    showResult.tfname = "$show_result".cPointer.cLiteral
     showResult.compiletf =
     {
         (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in

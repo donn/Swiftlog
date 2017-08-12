@@ -101,7 +101,7 @@ public class Procedure
         let pointers = self.name.cPointer
         self.cNameSize = pointers.elementCount
         self.cNamePointer = pointers.mutable
-        self.store.tfname = pointers.literal
+        self.store.tfname = pointers.cLiteral
 
         self.store.type = PLI_INT32(self.type.rawValue)
         self.store.compiletf = {
