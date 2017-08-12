@@ -1,7 +1,7 @@
 # Swiftlog
 Swiftlog is a Swift bridge for IcarusVerilog's VPI (PLI 2.0).
 
-The API is not "Swifty" yet, but ~all~ of your logic can be written in Swift!
+A Swiftier API is in the works, but ~all~ of your logic can be written in Swift!
 
 # Usage
 To build, run *build.sh*. This compiles the C, Swift and Verilog components, and generates two files inside **Executables**: main.vpi and main.vpp.
@@ -11,6 +11,7 @@ To run, run *run.sh*. If all goes well, you should see:
 ```bash
     Hello from Verilog!
     ...and Hello from Swift!
+    Result: 999
 ```
 
 And you're ready to go! Use all the Swift files you want past this point by putting them in Swiftlog/. On startup, it calls Swiftlog.startup()- so initialize static classes there.
@@ -37,7 +38,6 @@ You need the latest version of Xcode and IcarusVerilog headers installed to /usr
 
 # To-do
 * Swiftier syntax. This is no more than an API import with the necessary modifications to make it link against iverilog at the moment.
-* Allow more dynamic naming. As it stands, the name of the Verilog file that's loaded is stuck as "main.v". Obviously the user may modify the bash script as they see fit but it's not particularly user friendly.
 * Makefile?
 
 # License

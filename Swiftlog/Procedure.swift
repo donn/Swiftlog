@@ -80,7 +80,6 @@ public enum ProcedureType: Int
 public class Procedure
 {
     private var store: s_vpi_systf_data
-    private var compiletf: (UnsafeMutablePointer<Int8>?) -> (Int32)
     private var name: String
     private var cNameSize: Int
     private var cNamePointer: UnsafeMutablePointer<UInt8>
@@ -108,7 +107,7 @@ public class Procedure
         self.store.compiletf = {
             (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
             return 0
-        } //So it doesn't complain about not everything being initialize before self is used in a method like a goddamn baby
+        } //So it doesn't complain about not everything being initialized before self is used in a method like a goddamn baby
         self.store.calltf = {
             (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
             return 0
@@ -117,7 +116,7 @@ public class Procedure
         // self.store.compiletf =  {
         //     (user_data: UnsafeMutablePointer<Int8>?) -> Int32 in
         //     return self.compile(user_data: user_data)
-        // } //Error here
+        // } //This is where I hit a brick wall, I need to capture context for this C function, which Swift won't allow me to. Perhaps I'll need to rethink all of this...
         vpi_register_systf(&self.store);
 
     }
