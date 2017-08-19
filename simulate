@@ -39,7 +39,7 @@ if [ $unamestr = "Darwin" ]; then
     clangFlags="-dynamiclib -undefined dynamic_lookup"
     linkerFlags="-L$(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -rpath $(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx"
 else
-    if [ $unamestr = "Darwin" ]; then
+    if [ $unamestr = "Linux" ]; then
         echo "Compiling for Linux."
         swiftFlags=""
         clangFlags="-shared"
