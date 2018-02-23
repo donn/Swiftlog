@@ -4,59 +4,61 @@ typealias PLIInt32 = PLI_INT32
 
 public enum Value: Int
 {
-    case BinaryString = 1
-    case OctalString = 2
-    case DecimalString = 3
-    case HexadecimalString = 4
-    case Scalar = 5
-    case Integer = 6
-    case Real = 7
-    case String = 8
-    case Vector = 9
-    case Strength = 10
-    case Time = 11
-    case ObjectType = 12
-    case Suppressed = 13
+    case binaryString = 1
+    case octalString = 2
+    case decimalString = 3
+    case hexadecimalString = 4
+    case scalar = 5
+    case integer = 6
+    case real = 7
+    case string = 8
+    case vector = 9
+    case strength = 10
+    case time = 11
+    case objectType = 12
+    case suppressed = 13
 }
 
 public enum ObjectType: Int
 {
-    case Constant = 7
-    case Function = 20
-    case Integer = 25
-    case Iterator = 27
-    case Memory = 29
-    case MemoryWord = 30
-    case ModulePath = 31
-    case Module = 32
-    case NamedBegin = 33
-    case NamedEvent = 34
-    case NamedFork = 35
-    case Net = 36
-    case Parameter = 41
-    case PartSelect = 42
-    case PathTerm = 43
-    case Real = 47
-    case Register = 48
-    case FunctionCall = 56
-    case TaskCall = 57
-    case Task = 59
-    case Time = 63
-    case NetArray = 114
-    case Index = 78
-    case LeftRange = 79
-    case Parent = 81
-    case RightRange = 83
-    case Scope = 84
-    case AnyCall = 85
-    case Argument = 89
-    case InternalScope = 92
-    case ModPathIn = 95
-    case ModPathOut = 96
-    case Variables = 100
-    case Expression = 102
+    case constant = 7
+    case function = 20
+    case integer = 25
+    case iterator = 27
+    case memory = 29
+    case memoryWord = 30
+    case modulePath = 31
+    case module = 32
+    case namedBegin = 33
+    case namedEvent = 34
+    case namedFork = 35
+    case net = 36
+    case parameter = 41
+    case partSelect = 42
+    case pathTerm = 43
+    case real = 47
+    case register = 48
+    case functionCall = 56
+    case taskCall = 57
+    case task = 59
+    case time = 63
+    case netArray = 114
+    case index = 78
+    case leftRange = 79
+    case parent = 81
+    case rightRange = 83
+    case scope = 84
+    case anyCall = 85
+    case argument = 89
+    case internalScope = 92
+    case modPathIn = 95
+    case modPathOut = 96
+    case variables = 100
+    case expression = 102
 
-    case Callback = 1000
+    case any = 777
+
+    case callback = 1000
 }
 
 public struct Object
@@ -67,6 +69,20 @@ public struct Object
         return ObjectType(rawValue: Int(vpi_get(vpiType, handle)))
     }
 
+    public var asInt: Int32 {
+        var value = s_vpi_value()
+        value.format = vpiIntVal
+        vpi_get_value(handle, &value)
+        return value.value.integer
+    }
+
+    public func update(_ val: Int32) {
+        var value = s_vpi_value()
+        value.format = vpiIntVal
+        value.value.integer = val
+        vpi_put_value(handle, &value, nil, vpiNoDelay)
+    }
+
     init(handle: vpiHandle)
     {
         self.handle = handle
@@ -75,11 +91,9 @@ public struct Object
 
 public enum ProcedureType: Int
 {
-    case Task = 1
-    case Func = 2
+    case task = 1
+    case function = 2
 }
-
-
 
 func compiletf(user_data: UnsafeMutablePointer<Int8>?) -> PLIInt32
 {
@@ -103,7 +117,6 @@ func calltf(user_data: UnsafeMutablePointer<Int8>?) -> PLIInt32
     return 0
 }
 
-
 public class Procedure
 {
     public static var dictionary: [String: Procedure] = [:]
@@ -112,12 +125,12 @@ public class Procedure
     private var cNameSize: Int
     private var cNamePointer: UnsafeMutablePointer<UInt8>
     private var type: ProcedureType
-    private var arguments: [Object]
+    private var arguments: [ObjectType]
     private var registered: Bool
-    private var validate: ((_: inout [Any]) -> (Bool))?
-    private var execute: (_: inout [Any]) -> (Bool)
+    private var validate: ((_: inout [Object]) -> (Bool))?
+    private var execute: (_: inout [Object]) -> (Bool)
     
-    public init(name: String, type: ProcedureType = .Task, arguments: [Object] = [], validationClosure: ((_: inout [Any]) -> (Bool))? = nil, executionClosure: @escaping (_: inout [Any]) -> (Bool), register: Bool = false)
+    public init(name: String, type: ProcedureType = .task, arguments: [ObjectType] = [], validationClosure: @escaping (_: inout [Object]) -> (Bool) = { _ in return true }, executionClosure: @escaping (_: inout [Object]) -> (Bool), register: Bool = false)
     {
         self.name = name
         self.type = type
@@ -181,15 +194,16 @@ public class Procedure
             var count = 0
             while let argument = vpi_scan(iterator)
             {
-                count += 1
                 let type = vpi_get(vpiType, argument)
 
-                if Int(type) != self.arguments[count].type?.rawValue
+                if Int(type) != self.arguments[count].rawValue && self.arguments[count] != .any
                 {
                     print("\(self.name), argument \(count): Invalid argument type.")
                     Control.finish()
                     return 0
                 }
+
+                count += 1
             }
 
             if count != arguments.count
@@ -207,9 +221,17 @@ public class Procedure
 
     func call() -> PLIInt32
     {        
-        //TODO: make arguments more easily accessible
-        var emptyArray: [Any] = []
-        return execute(&emptyArray) ? 0 : -1
+        var array: [Object] = []
+
+        if (arguments.count > 0) {
+            let handle = vpi_handle(vpiSysTfCall, nil)!
+            let iterator = vpi_iterate(vpiArgument, handle)!
+
+            for _ in 0..<arguments.count {
+                array.append(Object(handle: vpi_scan(iterator)!))
+            }
+        }
+        return execute(&array) ? 0 : -1
     }
 
     deinit
