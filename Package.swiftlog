@@ -1,11 +1,17 @@
+// swift-tools-version:4.0
 import PackageDescription
 
 let package = Package(
     name: "Swiftlog",
-    targets: [
-        Target(name: packageName, dependencies: ["Swiftlog", "VPIAssistant"]),
-        Target(name: "Swiftlog", dependencies: ["VPIAssistant"]),
-        Target(name: "VPIAssistant")
+    products: [
+        .library(
+            name: packageName,
+            targets: [packageName]
+        )
     ],
-    exclude: ["Executables", "Verilog"]
+    targets: [
+        .target(name: packageName, dependencies: ["Swiftlog", "VPIAssistant"], path: packageName),
+        .target(name: "Swiftlog", dependencies: ["VPIAssistant"], path: "Swiftlog"),
+        .target(name: "VPIAssistant", path: "VPIAssistant")
+    ]
 )

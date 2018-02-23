@@ -1,4 +1,4 @@
-//SWIFTLOG: main.v
+///@SWIFTLOG: main.v
 import Swiftlog
 import VPIAssistant
 

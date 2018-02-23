@@ -1,61 +1,376 @@
-#!/bin/sh
-error=0
+#!/usr/bin/env swift
+import Foundation
 
-unamestr=`uname`
+extension String {
+    func sh() -> Int {
+        let task = Process()
+        task.launchPath = "/usr/bin/env"
+        task.arguments = ["sh", "-c", self]
+        task.launch()
+        task.waitUntilExit()
+        return Int(task.terminationStatus)
+    }
 
-mkdir -p Executables/
+    func shOutput() -> (status: Int, string: String) {
+        let task = Process()
+        task.launchPath = "/usr/bin/env"
+        task.arguments = ["sh", "-c", self]
 
-header=`head -n 1 $1/Startup.swift`
+        let outputPipe = Pipe()
+        task.standardOutput = outputPipe
+        task.standardError = outputPipe
 
-components=()
+        task.launch()
+        task.waitUntilExit()
 
-#Portable splitting by: https://stackoverflow.com/a/15988793
-while [ "$header" ] ;do
-    iterator=${header%%\ *}
-    components+=("$iterator")
-    [ "$header" = "$iterator" ] && \
-        header='' || \
-        header="${header#*\ }"
-done
+        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let output: String = NSString(data: data, encoding: String.Encoding.utf8.rawValue)! as String
 
-swiftlogHeader="//SWIFTLOG:"
-actualHeader="${components[0]}"
+        return (status: Int(task.terminationStatus), string: output)
+    }
+}
 
-if [ "$actualHeader" != "$swiftlogHeader" ]; then
-    echo "Swiftlog verilog header not found in Startup.swift."
-    exit
-fi
+public enum DefileModes {
+    case read
+    case write
+    case append
+}
 
-cd $1
-iverilog -o ../Executables/main.vvp "${components[1]}"
-cd ..
+public enum DefileError: Error {
+    case modeMismatch
+    case writeFailure
+    case noFileOpen
+    case null
+}
 
-error=$((error + $?))
+extension String {
+    public func replacing(_ extensions: [String], with replacement: String) -> String
+    {
+        var components = self.components(separatedBy: ".")
+        let last = components.count - 1
+        if extensions.contains(components[last])
+        {
+            components.remove(at: last)
+        }
+        components.append(replacement)
+        return components.joined(separator: ".")
+    }
+}
 
-# macOS using Mach-style binaries means leaving some symbols hanging like that isn't viable without a special option.
-if [ $unamestr = "Darwin" ]; then
-    echo "Compiling for macOS."
-    swiftFlags="-Xcc -I/usr/local/include/ -Xlinker -undefined -Xlinker dynamic_lookup"
-    clangFlags="-dynamiclib -undefined dynamic_lookup"
-    linkerFlags="-L$(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -rpath $(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx"
-else
-    if [ $unamestr = "Linux" ]; then
-        echo "Compiling for Linux."
-        swiftFlags=""
-        clangFlags="-shared"
-        linkerFlags="-L$(dirname $(dirname $(which swift)))/lib/swift/linux -ldispatch -lFoundation -lswiftCore -lswiftGlibc -lswiftRemoteMirror -lswiftSwiftOnoneSupport -rpath $(dirname $(dirname $(which swift)))/lib/swift/linux -fuse-ld=gold"
-    else
-        echo "Unsupported OS."
-        exit 0
-    fi
-fi
+public class Defile
+{
+    private var file: UnsafeMutablePointer<FILE>
+    private var mode: DefileModes
+    private var storage: [UInt8]
+    private var cOpen: Bool
 
-echo "//Swiftlog Generated File: Do Not Modify\nlet packageName = \"$1\"\n$(cat Package.swiftlog)" > Package.swift 
+    /*
+     Initializes file.
+     
+     path: The give path (or filename) to open the file in.
+     
+     mode: .read, .write or .append.
+        *.read opens file for reading. If the file does not exist, the initializer fails.
+        *.write opens file for writing. If the file does not exist, it will be created.
+        *.append opens the file for appending more information to the end of the file. If the file does not exist, it will be created.
+     
+    */
+    public init?(_ path: String, mode: DefileModes = .read)
+    {
+        var modeStr: String
+        
+        switch(mode)
+        {
+            case .read:
+                modeStr = "r"
+            case .write:
+                modeStr = "w"
+            case .append:
+                modeStr = "a"
+        }
+        
+        guard let file = fopen(path, modeStr + "b")
+        else
+        {
+            return nil
+        }
 
-sh -c "swift build $swiftFlags && clang -fPIC $clangFlags .build/debug/Swiftlog.build/*.swift.o .build/debug/$1.build/*.swift.o .build/debug/VPIAssistant.build/VPIAssistant.c.o -o Executables/main.vpi $linkerFlags"
+        self.file = file        
+        self.mode = mode
+        self.storage = []            
 
-error=$((error + $?))
+        cOpen = true;
 
-if [ "$error" == "0" ]; then
-    vvp -MExecutables/ -mmain Executables/main.vvp
-fi
+        if (mode == .read)
+        {
+            var character = fgetc(file)
+            
+            while character != EOF
+            {
+                storage.append(UInt8(character))
+                character = fgetc(file)
+            }
+
+            fclose(file)
+            cOpen = false;
+        }
+    }
+
+    deinit
+    {
+        close()
+    }
+
+    /*
+        Closes the file. This is usually necessary to write to disk.
+    */
+    public func close()
+    {
+        if cOpen
+        {
+            fclose(file)
+            cOpen = false
+        }
+    }
+
+    /*
+        An alternative to the initializer.
+    */
+    static public func open(_ path: String, mode: DefileModes = .read) -> Defile?
+    {
+        return Defile(path, mode: mode)
+    }
+
+    /*
+        Ruby-inspired, this version of open just takes a closure. The file will automatically close upon completion of the closure. The closure should return a non-nil value for error handling.
+    */
+    static public func open(_ path: String, mode: DefileModes = .read, execute: (Defile) -> (Any?)) -> Any?
+    {
+        guard let file = Defile(path, mode: mode)
+        else
+        {
+            return nil
+        }
+        let result = execute(file)
+        file.close()
+        return result
+    }
+    
+    /*
+        Returns entire file as a UTF-8-based string.
+        Fails if mode is not 'read' or if the file is not valid UTF-8.
+    */
+    public var string: String?
+    {
+        if mode != .read
+        {
+            return nil
+        }
+
+        guard let convertible = String(data: Data(storage), encoding: .utf8)
+        else
+        {
+            return nil
+        }
+
+        return convertible
+    }
+
+    /*
+        Returns files as lines. Pretty popular for text processing.
+        Fails for the same reasons property "string" would fail.
+    */
+
+    public var lines: [String]?
+    {
+        if mode != .read
+        {
+            return nil
+        }
+
+        guard let result = self.string?.components(separatedBy: "\n")
+        else
+        {
+            return nil
+        }
+
+        return result
+    }
+
+    /*
+        Returns UTF-8 array of the file.
+    */
+    public var bytes: [UInt8]?
+    {
+        if mode != .read
+        {
+            return nil
+        }
+
+        return storage        
+    }
+
+    /*
+        Writes binary data to file.
+        Fails on mode mismatch or if the file is already closed.
+    */
+    public func write(bytes: [UInt8]) throws
+    {
+        if mode == .read
+        {
+            throw DefileError.modeMismatch
+        }
+
+        if !cOpen
+        {
+            throw DefileError.noFileOpen
+        }
+
+        for byte in bytes
+        {
+            if (fputc(Int32(byte), file) == EOF)
+            {
+                throw DefileError.writeFailure
+            }
+        }
+    }
+
+    /*
+        Writes string to file.
+        Fails for the same reasons as bytes, which it uses.
+    */
+    public func write(string: String) throws
+    {
+        do
+        {
+            try self.write(bytes: [UInt8](Array(string.utf8)))
+        }
+        catch
+        {
+            throw error
+        }      
+    }
+
+    @available(*, unavailable, message: "Please use .print() instead.")
+    public func puts(string: String) throws {}
+
+    /*
+        Essentially an equivalent of Swift.print() for use with Defile, except this one throws.
+        Fails for the same reasons as write, which it uses.
+    */
+    public func print(_ items: Any..., separator: String = " ", terminator: String = "\n") throws
+    {
+        do
+        {
+            for (i, item) in items.enumerated()
+            {
+                try self.write(string: String(describing: item))
+                if (i != items.count - 1)
+                {
+                    try self.write(string: separator)
+                }               
+            }
+            try self.write(string: terminator)
+        }
+        catch
+        {
+            throw error
+        }
+    }
+}
+
+if (CommandLine.arguments.count <= 1) {
+    print("Error: Folder for Swiftlog module not provided.")
+    exit(64)
+}
+
+let simulatable = CommandLine.arguments[1].trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+
+if ("mkdir -p Executables/".sh() != 0) {
+    print("Unable to create 'Executables' dump file.")
+    exit(-1)
+}
+
+guard let startup = Defile("\(simulatable)/Startup.swift") else {
+    print("Startup.swift not found in Swiftlog module.")
+    exit(-1)
+}
+
+guard let firstLine = startup.lines?[0] else {
+    print("File encoding failed.")
+    exit(-1)
+}
+
+if !firstLine.hasPrefix("///@SWIFTLOG: ") {
+    print("Swiftlog prefix not found in Startup.swift. (Note: must be space-delimited.)")
+    exit(-1)
+}
+
+let file = firstLine.components(separatedBy: "///@SWIFTLOG: ")[1]
+
+chdir(simulatable)
+
+var icarusVerilogResult = "iverilog -o ../Executables/main.vvp \(file)".sh()
+
+if (icarusVerilogResult != 0) {
+    exit(Int32(icarusVerilogResult))
+}
+
+chdir("..")
+
+var swiftFlags: String
+var clangFlags: String
+var linkerFlags: String
+
+#if os(macOS)
+    print("Compiling for macOS.")
+    swiftFlags = "-Xcc -I/usr/local/include/ -Xlinker -undefined -Xlinker dynamic_lookup"
+    clangFlags = "-dynamiclib -undefined dynamic_lookup"
+
+    let xcodePath = "xcode-select --print-path".shOutput()
+
+    if (xcodePath.status != 0) {
+        print("Xcode not installed. Aborting.")
+        exit(-1)
+    }
+
+    linkerFlags = "-L\(xcodePath.string.trimmingCharacters(in: .whitespacesAndNewlines))/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -rpath \(xcodePath.string.trimmingCharacters(in: .whitespacesAndNewlines))/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx"
+#elseif os(Linux)
+    print("Compiling for Linux.")
+    swiftFlags = ""
+    clangFlags = "-shared"
+
+    let swiftPath = "dirname $(dirname $(which swift))"
+
+    if (swiftPath.status != 0) {
+        print("Swift not in PATH. Aborting.")
+        exit(-1)
+    }
+
+    linkerFlags = "-L\(swiftPath.string.trimmingCharacters(in: .whitespacesAndNewlines))/lib/swift/linux -ldispatch -lFoundation -lswiftCore -lswiftGlibc -lswiftRemoteMirror -lswiftSwiftOnoneSupport -rpath \(swiftPath.string.trimmingCharacters(in: .whitespacesAndNewlines))/lib/swift/linux -fuse-ld=gold"
+#else
+    print("Unsupported operating system.")
+    exit(-1)
+#endif
+
+guard let packageTemplate = Defile("Package.swiftlog") else {
+    print("Package.swiftlog not found. Aborting.")
+    exit(-1)
+}
+
+var lines = packageTemplate.lines!
+
+lines.insert("let packageName = \"\(simulatable)\"", at: 2)
+lines.insert("// Automatically generated by Swiftlog: Do not modify!")
+
+guard let output = Defile("Package.swift", mode: .write) else {
+    print("Could not open Package.swift for output.")
+    exit(-1)
+}
+
+try! output.write(string: lines.joined(separator: "\n"))
+output.close()
+
+if ("swift build \(swiftFlags) && clang -fPIC \(clangFlags) .build/debug/Swiftlog.build/*.swift.o .build/debug/\(simulatable).build/*.swift.o .build/debug/VPIAssistant.build/VPIAssistant.c.o -o Executables/main.vpi \(linkerFlags)".sh() == 0) {
+    exit(Int32("vvp -MExecutables/ -mmain Executables/main.vvp".sh()))
+}
