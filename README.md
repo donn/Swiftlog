@@ -9,7 +9,7 @@ Make a folder with your VPI module's name. Copy all verilog modules inside, and 
 Create a file called Startup.swift, and use this template:
 
 ```swift
-//SWIFTLOG: <Verilog File To Simulate Here>
+///@SWIFTLOG: <Verilog File To Simulate Here>
 import Swiftlog
 import VPIAssistant
 
@@ -34,7 +34,7 @@ Your clock should be coming from Verilog, and you should provide update function
 
 
 # Requirements
-You need Swift 3.1, which you can get from [Swift.org](https://swift.org/download), and add it to the PATH. On macOS, that means Xcode and the Xcode commandline tools must be active.
+You need Swift 4.0, which you can get from [Swift.org](https://swift.org/download), and add it to the PATH. On macOS, that means Xcode and the Xcode commandline tools must be active.
 
 ## Ubuntu
 Other than Swift, you'll just need Clang and IcarusVerilog.
