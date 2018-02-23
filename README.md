@@ -50,9 +50,6 @@ You need the latest version of Xcode and IcarusVerilog headers installed to /usr
     brew install icarus-verilog
 ```
 
-# To-do
-* Expose arguments in a Swiftier, friendlier way: currently you still have to use the C iterators and such to get your arguments.
-
 # License
 GNU General Public License v2 or (at your option), any later version. Check 'LICENSE'.
 
