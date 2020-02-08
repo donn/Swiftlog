@@ -3,8 +3,7 @@ import Swiftlog
 import VPIAssistant
 
 @_cdecl("swiftlog_startup")
-func startup()
-{
+func startup() {
     let helloWorld = Procedure(name: "$hello_world", executionClosure: {
         _ in
         print("...and Hello from Swift!")

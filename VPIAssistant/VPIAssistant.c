@@ -7,13 +7,11 @@
 */
 extern void swiftlog_startup(void);
 
-void (*vlog_startup_routines[])() =
-{
+void (*vlog_startup_routines[])() = {
     swiftlog_startup,
     0
 };
 
-void vpi_finish()
-{
+void vpi_finish() {
     vpi_control(vpiFinish, 0);
 }

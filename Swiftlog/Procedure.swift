@@ -2,8 +2,7 @@ import VPIAssistant
 
 typealias PLIInt32 = PLI_INT32
 
-public enum Value: Int
-{
+public enum Value: Int {
     case binaryString = 1
     case octalString = 2
     case decimalString = 3
@@ -19,8 +18,7 @@ public enum Value: Int
     case suppressed = 13
 }
 
-public enum ObjectType: Int
-{
+public enum ObjectType: Int {
     case constant = 7
     case function = 20
     case integer = 25
@@ -61,8 +59,7 @@ public enum ObjectType: Int
     case callback = 1000
 }
 
-public struct Object
-{
+public struct Object {
     private var handle: vpiHandle
     
     public var type: ObjectType? {
@@ -83,22 +80,18 @@ public struct Object
         vpi_put_value(handle, &value, nil, vpiNoDelay)
     }
 
-    init(handle: vpiHandle)
-    {
+    init(handle: vpiHandle) {
         self.handle = handle
     }
 }
 
-public enum ProcedureType: Int
-{
+public enum ProcedureType: Int {
     case task = 1
     case function = 2
 }
 
-func compiletf(user_data: UnsafeMutablePointer<Int8>?) -> PLIInt32
-{
-    if let data = user_data, let procedure = Procedure.dictionary[String(cString: data)]
-    {
+func compiletf(user_data: UnsafeMutablePointer<Int8>?) -> PLIInt32 {
+    if let data = user_data, let procedure = Procedure.dictionary[String(cString: data)] {
         return procedure.compile()
     }
     print("Fatal Error: Failed to get name of last function called.")
@@ -106,10 +99,8 @@ func compiletf(user_data: UnsafeMutablePointer<Int8>?) -> PLIInt32
     return 0
 }
 
-func calltf(user_data: UnsafeMutablePointer<Int8>?) -> PLIInt32
-{
-    if let data = user_data, let procedure = Procedure.dictionary[String(cString: data)]
-    {
+func calltf(user_data: UnsafeMutablePointer<Int8>?) -> PLIInt32 {
+    if let data = user_data, let procedure = Procedure.dictionary[String(cString: data)] {
         return procedure.call()
     }
     print("Fatal Error: Failed to get name of last function called.")
@@ -117,8 +108,7 @@ func calltf(user_data: UnsafeMutablePointer<Int8>?) -> PLIInt32
     return 0
 }
 
-public class Procedure
-{
+public class Procedure {
     public static var dictionary: [String: Procedure] = [:]
     private var store: s_vpi_systf_data
     private var name: String
@@ -130,8 +120,7 @@ public class Procedure
     private var validate: ((_: inout [Object]) -> (Bool))?
     private var execute: (_: inout [Object]) -> (Bool)
     
-    public init(name: String, type: ProcedureType = .task, arguments: [ObjectType] = [], validationClosure: @escaping (_: inout [Object]) -> (Bool) = { _ in return true }, executionClosure: @escaping (_: inout [Object]) -> (Bool), register: Bool = false)
-    {
+    public init(name: String, type: ProcedureType = .task, arguments: [ObjectType] = [], validationClosure: @escaping (_: inout [Object]) -> (Bool) = { _ in return true }, executionClosure: @escaping (_: inout [Object]) -> (Bool), register: Bool = false) {
         self.name = name
         self.type = type
         self.arguments = arguments
@@ -149,55 +138,45 @@ public class Procedure
         self.store.compiletf = compiletf
         self.store.calltf = calltf
 
-        if (register)
-        {            
+        if (register) {            
             vpi_register_systf(&self.store)
             self.registered = true
             Procedure.dictionary[name] = self
         }
-        else
-        {
+        else {
             self.registered = false
         }
     }
 
-    public func register()
-    {
-        if (!registered)
-        {            
+    public func register() {
+        if (!registered) {            
             vpi_register_systf(&self.store)
             self.registered = true
             Procedure.dictionary[name] = self
         }
     }
 
-    func compile() -> PLIInt32
-    {
+    func compile() -> PLIInt32 {
         guard let handle = vpi_handle(vpiSysTfCall, nil)
-        else
-        {
+        else {
             print("Fatal Error: $\(self.name) failed to obtain handle. The simulation will abort.")
             Control.finish()
             return 0
         }
 
-        if arguments.count > 0
-        {        
+        if arguments.count > 0 {        
             guard let iterator = vpi_iterate(vpiArgument, handle)
-            else
-            {
+            else {
                 print("\(self.name) requires \(arguments.count) argument(s). The simulation will abort.")
                 Control.finish()
                 return 0
             }
 
             var count = 0
-            while let argument = vpi_scan(iterator)
-            {
+            while let argument = vpi_scan(iterator) {
                 let type = vpi_get(vpiType, argument)
 
-                if Int(type) != self.arguments[count].rawValue && self.arguments[count] != .any
-                {
+                if Int(type) != self.arguments[count].rawValue && self.arguments[count] != .any {
                     print("\(self.name), argument \(count): Invalid argument type.")
                     Control.finish()
                     return 0
@@ -206,8 +185,7 @@ public class Procedure
                 count += 1
             }
 
-            if count != arguments.count
-            {
+            if count != arguments.count {
                 print("\(self.name) requires \(arguments.count) argument(s) (\(count) provided). The simulation will abort.")
                 Control.finish()
             }
@@ -219,8 +197,7 @@ public class Procedure
         return 0
     }
 
-    func call() -> PLIInt32
-    {        
+    func call() -> PLIInt32 {        
         var array: [Object] = []
 
         if (arguments.count > 0) {
@@ -234,9 +211,8 @@ public class Procedure
         return execute(&array) ? 0 : -1
     }
 
-    deinit
-    {
-        self.cNamePointer.deallocate(capacity: self.cNameSize)
+    deinit {
+        self.cNamePointer.deallocate()
     }
 
 }

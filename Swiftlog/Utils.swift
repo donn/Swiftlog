@@ -1,18 +1,14 @@
 import Foundation
 import VPIAssistant
 
-public class Control
-{
-    public static func finish()
-    {
+public class Control {
+    public static func finish() {
         vpi_finish();
     }
 }
 
-extension String
-{
-    public var cPointer: (cLiteral: UnsafePointer<CChar>, cMutable: UnsafeMutablePointer<CChar>, mutable: UnsafeMutablePointer<UInt8>, elementCount: Int)
-    {
+extension String {
+    public var cPointer: (cLiteral: UnsafePointer<CChar>, cMutable: UnsafeMutablePointer<CChar>, mutable: UnsafeMutablePointer<UInt8>, elementCount: Int) {
         var utf8Representation = Array(self.utf8)
         utf8Representation.append(0) //0 terminator
         let mutablePointer = UnsafeMutablePointer<UInt8>.allocate(capacity: utf8Representation.count)

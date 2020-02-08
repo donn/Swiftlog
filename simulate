@@ -44,12 +44,10 @@ public enum DefileError: Error {
 }
 
 extension String {
-    public func replacing(_ extensions: [String], with replacement: String) -> String
-    {
+    public func replacing(_ extensions: [String], with replacement: String) -> String {
         var components = self.components(separatedBy: ".")
         let last = components.count - 1
-        if extensions.contains(components[last])
-        {
+        if extensions.contains(components[last]) {
             components.remove(at: last)
         }
         components.append(replacement)
@@ -57,30 +55,16 @@ extension String {
     }
 }
 
-public class Defile
-{
+public class Defile {
     private var file: UnsafeMutablePointer<FILE>
     private var mode: DefileModes
     private var storage: [UInt8]
     private var cOpen: Bool
 
-    /*
-     Initializes file.
-     
-     path: The give path (or filename) to open the file in.
-     
-     mode: .read, .write or .append.
-        *.read opens file for reading. If the file does not exist, the initializer fails.
-        *.write opens file for writing. If the file does not exist, it will be created.
-        *.append opens the file for appending more information to the end of the file. If the file does not exist, it will be created.
-     
-    */
-    public init?(_ path: String, mode: DefileModes = .read)
-    {
+    public init?(_ path: String, mode: DefileModes = .read) {
         var modeStr: String
         
-        switch(mode)
-        {
+        switch(mode) {
             case .read:
                 modeStr = "r"
             case .write:
@@ -90,8 +74,7 @@ public class Defile
         }
         
         guard let file = fopen(path, modeStr + "b")
-        else
-        {
+        else {
             return nil
         }
 
@@ -101,12 +84,10 @@ public class Defile
 
         cOpen = true;
 
-        if (mode == .read)
-        {
+        if (mode == .read) {
             var character = fgetc(file)
             
-            while character != EOF
-            {
+            while character != EOF {
                 storage.append(UInt8(character))
                 character = fgetc(file)
             }
@@ -116,166 +97,70 @@ public class Defile
         }
     }
 
-    deinit
-    {
+    deinit {
         close()
     }
 
-    /*
-        Closes the file. This is usually necessary to write to disk.
-    */
-    public func close()
-    {
-        if cOpen
-        {
+    public func close() {
+        if cOpen {
             fclose(file)
             cOpen = false
         }
     }
 
-    /*
-        An alternative to the initializer.
-    */
-    static public func open(_ path: String, mode: DefileModes = .read) -> Defile?
-    {
+    static public func open(_ path: String, mode: DefileModes = .read) -> Defile? {
         return Defile(path, mode: mode)
     }
 
-    /*
-        Ruby-inspired, this version of open just takes a closure. The file will automatically close upon completion of the closure. The closure should return a non-nil value for error handling.
-    */
-    static public func open(_ path: String, mode: DefileModes = .read, execute: (Defile) -> (Any?)) -> Any?
-    {
-        guard let file = Defile(path, mode: mode)
-        else
-        {
-            return nil
-        }
-        let result = execute(file)
-        file.close()
-        return result
-    }
-    
-    /*
-        Returns entire file as a UTF-8-based string.
-        Fails if mode is not 'read' or if the file is not valid UTF-8.
-    */
-    public var string: String?
-    {
-        if mode != .read
-        {
+    public var string: String? {
+        if mode != .read {
             return nil
         }
 
         guard let convertible = String(data: Data(storage), encoding: .utf8)
-        else
-        {
+        else {
             return nil
         }
 
         return convertible
     }
 
-    /*
-        Returns files as lines. Pretty popular for text processing.
-        Fails for the same reasons property "string" would fail.
-    */
-
-    public var lines: [String]?
-    {
-        if mode != .read
-        {
+    public var lines: [String]? {
+        if mode != .read {
             return nil
         }
 
         guard let result = self.string?.components(separatedBy: "\n")
-        else
-        {
+        else {
             return nil
         }
 
         return result
     }
 
-    /*
-        Returns UTF-8 array of the file.
-    */
-    public var bytes: [UInt8]?
-    {
-        if mode != .read
-        {
-            return nil
-        }
-
-        return storage        
-    }
-
-    /*
-        Writes binary data to file.
-        Fails on mode mismatch or if the file is already closed.
-    */
-    public func write(bytes: [UInt8]) throws
-    {
-        if mode == .read
-        {
+    public func write(bytes: [UInt8]) throws {
+        if mode == .read {
             throw DefileError.modeMismatch
         }
 
-        if !cOpen
-        {
+        if !cOpen {
             throw DefileError.noFileOpen
         }
 
-        for byte in bytes
-        {
-            if (fputc(Int32(byte), file) == EOF)
-            {
+        for byte in bytes {
+            if (fputc(Int32(byte), file) == EOF) {
                 throw DefileError.writeFailure
             }
         }
     }
 
-    /*
-        Writes string to file.
-        Fails for the same reasons as bytes, which it uses.
-    */
-    public func write(string: String) throws
-    {
-        do
-        {
+    public func write(string: String) throws {
+        do {
             try self.write(bytes: [UInt8](Array(string.utf8)))
         }
-        catch
-        {
+        catch {
             throw error
         }      
-    }
-
-    @available(*, unavailable, message: "Please use .print() instead.")
-    public func puts(string: String) throws {}
-
-    /*
-        Essentially an equivalent of Swift.print() for use with Defile, except this one throws.
-        Fails for the same reasons as write, which it uses.
-    */
-    public func print(_ items: Any..., separator: String = " ", terminator: String = "\n") throws
-    {
-        do
-        {
-            for (i, item) in items.enumerated()
-            {
-                try self.write(string: String(describing: item))
-                if (i != items.count - 1)
-                {
-                    try self.write(string: separator)
-                }               
-            }
-            try self.write(string: terminator)
-        }
-        catch
-        {
-            throw error
-        }
     }
 }
 
@@ -334,7 +219,7 @@ var linkerFlags: String
         exit(-1)
     }
 
-    linkerFlags = "-L\(xcodePath.string.trimmingCharacters(in: .whitespacesAndNewlines))/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -rpath \(xcodePath.string.trimmingCharacters(in: .whitespacesAndNewlines))/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx"
+    linkerFlags = "-L/usr/lib/swift -rpath /usr/lib/swift -lswiftCore"
 #elseif os(Linux)
     print("Compiling for Linux.")
     swiftFlags = ""
@@ -371,6 +256,14 @@ guard let output = Defile("Package.swift", mode: .write) else {
 try! output.write(string: lines.joined(separator: "\n"))
 output.close()
 
-if ("swift build \(swiftFlags) && clang -fPIC \(clangFlags) .build/debug/Swiftlog.build/*.swift.o .build/debug/\(simulatable).build/*.swift.o .build/debug/VPIAssistant.build/VPIAssistant.c.o -o Executables/main.vpi \(linkerFlags)".sh() == 0) {
+if ("""
+    swift build \(swiftFlags) &&\
+    clang -fPIC \(clangFlags) \
+        .build/debug/Swiftlog.build/*.swift.o\
+        .build/debug/\(simulatable).build/*.swift.o\
+        .build/debug/VPIAssistant.build/VPIAssistant.c.o\
+        -o Executables/main.vpi \(linkerFlags)
+    """.sh() == 0
+) {
     exit(Int32("vvp -MExecutables/ -mmain Executables/main.vvp".sh()))
 }
